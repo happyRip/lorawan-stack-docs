@@ -1,0 +1,130 @@
+name: Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Setup environment
+        env:
+          TAG: "${{ github.event.inputs.tag }}"
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add - <<< '${{ secrets.PRIVATE_LW_STACK_KEY }}'
+          ssh-add - <<< '${{ secrets.PRIVATE_LW_STACK_AWS_KEY }}'
+
+          echo "branch=$( echo "${TAG}" | cut -d '.' -f '-2' )" >> "${GITHUB_ENV}"
+          echo "date=$(date +%F)" >> "${GITHUB_ENV}"
+      - name: Check out docs
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: "./lorawan-stack-docs"
+      - name: Check out changelogs
+        working-directory: "./lorawan-stack-docs"
+        env:
+          BRANCH: "${{ env.branch }}"
+          TAG: "${{ github.event.inputs.tag }}"
+        run: |
+          git remote add 'lorawan-stack git@github.com:TheThingsIndustries/lorawan-stack.git'
+          git remote add 'lorawan-stack-aws git@github.com:TheThingsIndustries/lorawan-stack-aws.git'
+          git fetch --depth=1
+
+          git checkout "lorawan-stack/${BRANCH}" -- 'CHANGEOLOG.md'
+          git checkout "lorawan-stack-aws/${BRANCH}" -- 'UPGRADING.md'
+      - name: Update changelog
+        working-directory: "./lorawan-stack-docs"
+        env:
+          BRANCH: "${{ env.branch }}"
+          DATE: "${{ env.date }}"
+          TAG: "${{ github.event.inputs.tag }}"
+        run: |
+          # Get changes
+          sed -n '/## \[Unreleased\]/,/## \[/p' 'CHANGELOG.md' \
+            | tail -n +3 \ # Skip first 2 lines
+            | head -n -1 \  # Skip last line
+            > "./doc/content/whats-new/${BRANCH}.md"
+
+          # Update header
+          sed -i "0,/## \[Unreleased\]/s//## \[${TAG}\] - ${DATE}/" 'CHANGELOG.md'
+
+          cat >>'CHANGELOG.md' <<EOF
+          ## [Unreleased]
+
+          ### Added
+
+          ### Changed
+
+          ### Deprecated
+
+          ### Removed
+
+          ### Fixed
+
+          ### Security
+
+          EOF
+      - name: Update upgrading
+        working-directory: "./lorawan-stack-docs"
+        env:
+          TAG: "${{ github.event.inputs.tag }}"
+        run: |
+          # Get changes
+          sed -n '/## Unreleased/,/## /p' 'UPGRADING.md' \
+            | tail -n +3 \ # Skip first 2 lines
+            | head -n -1 \  # Skip last line
+            > "./doc/content/getting-started/aws/ecs/changelog/${BRANCH}.md"
+
+          # Update header
+          sed -i "0,/## Unreleased/s//## ${TAG}/" 'UPGRADING.md'
+
+          cat >>'UPGRADING.md' <<EOF
+          ## Unreleased
+
+          EOF
+      - name: Update doc version
+        working-directory: "./lorawan-stack-docs"
+        env:
+          TAG: "${{ github.event.inputs.tag }}"
+        run: |
+          TAG="${TAG//v/}" # Remove 'v' from tag
+          sed -r "s/version = \"([0-9]+\.){2}[0-9]+\"/version = \"${TAG}\"/"
+      - name: Check out lorawan stack
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          path: "./lorawan-stack"
+          ref: "${{ github.event.inputs.tag }}"
+          repository: TheThingsIndustries/lorawan-stack
+      - name: Generate hugo data
+        working-directory: "./lorawan-stack"
+        run: tools/bin/mage ttiProto:hugoData
+      - name: Sync hugo data
+        working-directory: "./lorawan-stack-docs"
+        run: |
+          rsync --recursive --delete --remove-source-files '../lorawan-stack/api/ttn.lorawan.v3/' './doc/data/api/ttn.lorawan.v3/'
+          rsync --recursive --delete --remove-source-files '../lorawan-stack/api/tti.lorawan.v3/' './doc/data/api/tti.lorawan.v3/'
+      - name: Export CLI documentation
+        working-directory: "./lorawan-stack"
+        run: |
+          go build -tags 'tti' './cmd/tti-lw-cli'
+
+          HOME='$HOME' ./tti-lw-cli 'gen-md-doc' -o '../lorawan-stack-docs/doc/content/ttn-lw-cli'
+          HOME='$HOME' ./tti-lw-cli 'gen-json-tree' -o '../lorawan-stack-docs/doc/data/commands'
+
+          # Replace links to 'end-devices/templates' with 'templates' as they are not exported correctly.
+          sed -i 's/end-devices_templates/templates/g' '../lorawan-stack-docs/doc/content/ttn-lw-cli/ttn-lw-cli_end-devices.md'
+      - name: Upload artifacts to validate files
+        uses: actions/upload-artifact@v3
+        with:
+          name: Changed files
+          path: |
+            lorawan-stack-docs/doc/content/getting-started/aws/ecs/changeolog/${{ env.branch }}.md
+            lorawan-stack-docs/doc/content/whats-new/${{ env.branch }}.md
