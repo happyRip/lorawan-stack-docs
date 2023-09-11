@@ -140,5 +140,5 @@ jobs:
         with:
           name: Changed files
           path: |
-            lorawan-stack-docs/doc/content/getting-started/aws/ecs/changeolog/${{ env.branch }}.md
-            lorawan-stack-docs/doc/content/whats-new/${{ env.branch }}.md
+            lorawan-stack-docs/doc/content/the-things-stack/host/aws/ecs/changelog/index.md
+            lorawan-stack-docs/doc/content/whats-new/${{ github.event.inputs.tag }}.md
