@@ -52,10 +52,31 @@ jobs:
           cp ../lorawan-stack/CHANGELOG.md .
 
           # Get changes
+          CHANGES_FILE=$(mktemp)
+
           sed -n '/## \[Unreleased\]/,/## \[/p' 'CHANGELOG.md' \
             | tail -n +3 \
             | head -n -1 \
-            > "./doc/content/whats-new/${TAG}.md"
+            > "${CHANGES_FILE}"
+
+          # Remove empty sections
+          remove_empty_sections() {
+            local BUFFER INPUT_FILE="$1"
+            local P=true # to-print flag
+
+            while read -r l; do
+              if [[ ${l} =~ ^###[^#] ]]; then              # if new section
+                [ ${P} = true ] && printf "%s" "${BUFFER}" # if to-print, print buffer
+                BUFFER="${l}"$'\n'                         # reset buffer
+                P=false                                    # reset to-print flag
+              else
+                BUFFER="${BUFFER}${l}"$'\n' # update buffer
+                [[ -n ${l} ]] && P=true     # if non-empty line, set to-print flag
+              fi
+            done <"${INPUT_FILE}"
+            [ ${P} = true ] && printf "%s" "${BUFFER}" # if to-print, print buffer
+          }
+          remove_empty_sections "${CHANGES_FILE}" > "./doc/content/whats-new/${TAG}.md"
 
           # Update header
           sed -i "0,/## \[Unreleased\]/s//## \[${TAG}\] - ${DATE}/" 'CHANGELOG.md'
