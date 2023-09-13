@@ -79,7 +79,7 @@ jobs:
           }
 
           CHANGES_FILE="$(mktemp)"
-          remove_empty_sections "${TMP_FILE}" > "${CHANGES_FILE}"
+          remove_empty_sections "${TMP_FILE}" | tee "${CHANGES_FILE}"
 
           cat > "./doc/content/whats-new/${TAG}.md" <<EOF
           ---
