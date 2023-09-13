@@ -49,15 +49,16 @@ jobs:
           DATE: "${{ env.date }}"
           TAG: "${{ github.event.inputs.tag }}"
         run: |
+          set -x # Debug
+
           cp ../lorawan-stack/CHANGELOG.md .
 
           # Get changes
-          CHANGES_FILE=$(mktemp)
-
+          TMP_FILE=$(mktemp)
           sed -n '/## \[Unreleased\]/,/## \[/p' 'CHANGELOG.md' \
             | tail -n +3 \
             | head -n -1 \
-            > "${CHANGES_FILE}"
+            > "${TMP_FILE}"
 
           # Remove empty sections
           remove_empty_sections() {
@@ -76,7 +77,18 @@ jobs:
             done <"${INPUT_FILE}"
             [ ${P} = true ] && printf "%s" "${BUFFER}" # if to-print, print buffer
           }
-          remove_empty_sections "${CHANGES_FILE}" > "./doc/content/whats-new/${TAG}.md"
+
+          CHANGES_FILE="$(mktemp)"
+          remove_empty_sections "${TMP_FILE}" > "${CHANGES_FILE}"
+
+          cat > "./doc/content/whats-new/${TAG}.md" <<EOF
+          ---
+          date: ${DATE}
+          title: "${TAG//v/}"
+          featured: {}
+          ---
+          EOF
+          cat "${CHANGES_FILE}" >> "./doc/content/whats-new/${TAG}.md"
 
           # Update header
           sed -i "0,/## \[Unreleased\]/s//## \[${TAG}\] - ${DATE}/" 'CHANGELOG.md'
@@ -119,7 +131,6 @@ jobs:
           TAG: "${{ github.event.inputs.tag }}"
         run: |
           TAG="${TAG//v/}"  # Remove 'v' from tag
-          echo "${TAG}"     # DEBUG
           sed -r "s/version = \"([0-9]+\.){2}[0-9]+\"/version = \"${TAG}\"/"
       - name: Set up go
         uses: actions/setup-go@v4
