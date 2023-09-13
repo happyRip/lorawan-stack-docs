@@ -32,6 +32,11 @@ jobs:
           fetch-depth: 0
           path: "./lorawan-stack-docs"
           repository: happyRip/lorawan-stack-docs
+      - name: Setup git user
+        working-directory: "./lorawan-stack-docs"
+        run: |
+          git config user.name 'The Things Bot'
+          git config user.email 'github@thethingsindustries.com'
       - name: Check out lorawan stack
         uses: actions/checkout@v3
         with:
@@ -50,7 +55,7 @@ jobs:
           ref: "${{ env.branch }}"
           repository: happyRip/lorawan-stack-aws
           ssh-key: "${{ secrets.LORAWAN_STACK_AWS_SSH_KEY }}"
-      - name: Update changelog
+      - name: Update whats-new
         working-directory: "./lorawan-stack-docs"
         env:
           BRANCH: "${{ env.branch }}"
@@ -61,83 +66,41 @@ jobs:
 
           # Get changes
           TMP_FILE=$(mktemp)
-          sed -n '/## \[Unreleased\]/,/## \[/p' 'CHANGELOG.md' \
-            | tail -n +3 \
-            | head -n -1 \
+          awk "/^## \[${TAG//v/}\]/{flag=1;next} /^## \[/{flag=0} flag" \
+            'CHANGELOG.md' \
             > "${TMP_FILE}"
 
-          # Remove empty sections
-          remove_empty_sections() {
-            local BUFFER INPUT_FILE="$1"
-            local P=true # to-print flag
+          CHANGES_FILE="./doc/content/whats-new/${TAG}.md"
 
-            while read -r l; do
-              if [[ ${l} =~ ^###[^#] ]]; then              # if new section
-                [ ${P} = true ] && printf "%s" "${BUFFER}" # if to-print, print buffer
-                BUFFER="${l}"$'\n'                         # reset buffer
-                P=false                                    # reset to-print flag
-              else
-                BUFFER="${BUFFER}${l}"$'\n' # update buffer
-                [[ -n ${l} ]] && P=true     # if non-empty line, set to-print flag
-              fi
-            done <"${INPUT_FILE}"
-            [ ${P} = true ] && printf "%s" "${BUFFER}" # if to-print, print buffer
-          }
-
-          CHANGES_FILE="$(mktemp)"
-          remove_empty_sections "${TMP_FILE}" | tee "${CHANGES_FILE}"
-
-          cat > "./doc/content/whats-new/${TAG}.md" <<EOF
+          cat > "${CHANGES_FILE}" <<EOF
           ---
           date: ${DATE}
           title: "${TAG//v/}"
           featured: {}
           ---
           EOF
-          cat "${CHANGES_FILE}" >> "./doc/content/whats-new/${TAG}.md"
+          cat "${TMP_FILE}" >> "${CHANGES_FILE}"
 
-          # Update header
-          sed -i "0,/## \[Unreleased\]/s//## \[${TAG}\] - ${DATE}/" 'CHANGELOG.md'
-
-          cat >>'CHANGELOG.md' <<EOF
-          ## [Unreleased]
-
-          ### Added
-
-          ### Changed
-
-          ### Deprecated
-
-          ### Removed
-
-          ### Fixed
-
-          ### Security
-
-          EOF
-      - name: Update upgrading
+          git add "${CHANGES_FILE}"
+      - name: Update AWS ECS Changelog
         working-directory: "./lorawan-stack-docs"
-        env:
-          TAG: "${{ github.event.inputs.tag }}"
         run: |
-          cp ../lorawan-stack-aws/UPGRADING.md .
+          CHANGES_FILE='./doc/content/the-things-stack/host/aws/ecs/changelog/index.md'
 
-          # Update header
-          sed -i "0,/## Unreleased/s//## ${TAG}/" 'UPGRADING.md'
+          cp '../lorawan-stack-aws/UPGRADING.md' "${CHANGES_FILE}"
 
-          cat >>'UPGRADING.md' <<EOF
-          ## Unreleased
-
-          EOF
-
-          cat 'UPGRADING.md' > './doc/content/the-things-stack/host/aws/ecs/changelog/index.md'
+          git add "${CHANGES_FILE}"
       - name: Update doc version
         working-directory: "./lorawan-stack-docs"
         env:
           TAG: "${{ github.event.inputs.tag }}"
         run: |
-          TAG="${TAG//v/}"  # Remove 'v' from tag
-          sed -r "s/version = \"([0-9]+\.){2}[0-9]+\"/version = \"${TAG}\"/"
+          CONFIG_FILE='./doc/config/_default/config.toml'
+          TAG="${TAG//v/}" # Remove 'v' from tag
+
+          sed -r "s/version = \"([0-9]+\.){2}[0-9]+\"/version = \"${TAG}\"/" "${CONFIG_FILE}"
+
+          git add "${CONFIG_FILE}"
       - name: Set up go
         uses: actions/setup-go@v4
         with:
@@ -163,6 +126,8 @@ jobs:
         run: |
           rsync --recursive --delete --remove-source-files '../lorawan-stack/api/ttn.lorawan.v3/' './doc/data/api/ttn.lorawan.v3/'
           rsync --recursive --delete --remove-source-files '../lorawan-stack/api/tti.lorawan.v3/' './doc/data/api/tti.lorawan.v3/'
+
+          git add ./doc/data/api/tt{i,n}.lorawan.v3/
       - name: Export CLI documentation
         working-directory: "./lorawan-stack"
         run: |
@@ -173,10 +138,17 @@ jobs:
 
           # Replace links to 'end-devices/templates' with 'templates' as they are not exported correctly.
           sed -i 's/end-devices_templates/templates/g' '../lorawan-stack-docs/doc/content/ttn-lw-cli/ttn-lw-cli_end-devices.md'
-      - name: Upload artifacts to validate files
-        uses: actions/upload-artifact@v3
-        with:
-          name: Changed files
-          path: |
-            lorawan-stack-docs/doc/content/the-things-stack/host/aws/ecs/changelog/index.md
-            lorawan-stack-docs/doc/content/whats-new/${{ github.event.inputs.tag }}.md
+
+          cd '../lorawan-stack-docs'
+          git add ./doc/{content/ttn-lw-cli,data/commands}
+      - name: Prepare merge PR
+        working-directory: "./lorawan-stack-docs"
+        env:
+          TAG: "${{ github.event.inputs.tag }}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+              --assignee '${{ github.actor }}' \
+              --base "${TAG//v/}" \
+              --body "This pull request merges back changes from the ${TAG} release." \
+              --title "Release ${TAG}"
