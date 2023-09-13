@@ -6,12 +6,20 @@ on:
       tag:
         description: Release tag
         required: true
+      debug:
+        description: Enable debug mode when set to 'true'
+        required: false
+        default: "false"
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-20.04
     steps:
+      - name: Set debug mode
+        if: ${{ github.event.inputs.debug == 'true' }}
+        run: |
+          set -x
       - name: Set up environment
         env:
           TAG: "${{ github.event.inputs.tag }}"
@@ -49,8 +57,6 @@ jobs:
           DATE: "${{ env.date }}"
           TAG: "${{ github.event.inputs.tag }}"
         run: |
-          set -x # Debug
-
           cp ../lorawan-stack/CHANGELOG.md .
 
           # Get changes
