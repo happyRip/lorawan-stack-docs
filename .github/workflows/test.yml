@@ -33,9 +33,12 @@ jobs:
         with:
           fetch-depth: 0
           path: "./lorawan-stack-docs"
+          ref: "master"
           repository: happyRip/lorawan-stack-docs
       - name: Setup git user
         working-directory: "./lorawan-stack-docs"
+        env:
+          TAG: "${{ github.event.inputs.tag }}"
         run: |
           git config user.name 'The Things Bot'
           git config user.email 'github@thethingsindustries.com'
@@ -149,6 +152,7 @@ jobs:
           TAG: "${{ github.event.inputs.tag }}"
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
+          git commit -m "all: Release \`${TAG}\` documentation"
           gh pr create \
               --assignee '${{ github.actor }}' \
               --base 'master' \
