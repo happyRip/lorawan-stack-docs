@@ -16,6 +16,7 @@ jobs:
     name: Test
     runs-on: ubuntu-20.04
     permissions:
+      contents: write
       pull-requests: write
     steps:
       - name: Set debug mode
@@ -42,6 +43,7 @@ jobs:
         run: |
           git config user.name 'The Things Bot'
           git config user.email 'github@thethingsindustries.com'
+          git push
       - name: Check out lorawan stack
         uses: actions/checkout@v3
         with:
