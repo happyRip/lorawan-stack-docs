@@ -147,10 +147,10 @@ jobs:
         working-directory: "./lorawan-stack-docs"
         env:
           TAG: "${{ github.event.inputs.tag }}"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
           gh pr create \
               --assignee '${{ github.actor }}' \
-              --base "${TAG//v/}" \
+              --base 'master' \
               --body "This pull request merges back changes from the ${TAG} release." \
               --title "Release ${TAG}"
