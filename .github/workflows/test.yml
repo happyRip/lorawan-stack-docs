@@ -16,8 +16,9 @@ jobs:
     name: Test
     runs-on: ubuntu-20.04
     permissions:
-      contents: write
-      pull-requests: write
+      write-all
+      # contents: write
+      # pull-requests: write
     steps:
       - name: Set debug mode
         if: ${{ github.event.inputs.debug == 'true' }}
