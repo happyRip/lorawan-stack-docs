@@ -160,4 +160,5 @@ jobs:
               --assignee '${{ github.actor }}' \
               --base 'master' \
               --body "This pull request merges back changes from the ${TAG} release." \
-              --title "Release ${TAG}"
+              --title "Release ${TAG}" \
+              --head "$(git branch --show-current)"
