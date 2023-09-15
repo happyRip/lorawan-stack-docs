@@ -144,8 +144,8 @@ jobs:
         run: |
           go build -tags 'tti' './cmd/tti-lw-cli'
 
-          HOME='$HOME' ./tti-lw-cli 'gen-md-doc' -o '../lorawan-stack-docs/doc/content/ttn-lw-cli'
-          HOME='$HOME' ./tti-lw-cli 'gen-json-tree' -o '../lorawan-stack-docs/doc/data/commands'
+          HOME='\$HOME' ./tti-lw-cli 'gen-md-doc' -o '../lorawan-stack-docs/doc/content/ttn-lw-cli'
+          HOME='\$HOME' ./tti-lw-cli 'gen-json-tree' -o '../lorawan-stack-docs/doc/data/commands'
 
           # Replace links to 'end-devices/templates' with 'templates' as they are not exported correctly.
           sed -i 's/end-devices_templates/templates/g' '../lorawan-stack-docs/doc/content/ttn-lw-cli/ttn-lw-cli_end-devices.md'
