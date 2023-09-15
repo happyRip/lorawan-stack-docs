@@ -141,6 +141,9 @@ jobs:
           git add ./doc/data/api/tt{i,n}.lorawan.v3/
       - name: Export CLI documentation
         working-directory: "./lorawan-stack"
+        env:
+          HOME: "$HOME"
+          GOPATH: "/home/runner/go/pkg/mod"
         run: |
           go build -tags 'tti' './cmd/tti-lw-cli'
 
