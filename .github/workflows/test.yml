@@ -44,6 +44,9 @@ jobs:
           git config user.name 'The Things Bot'
           git config user.email 'github@thethingsindustries.com'
           git status
+          git checkout -b '${{ github.run_id }}-${{ github.run_attempt }}'
+          git push --set-upstream origin '${{ github.run_id }}-${{ github.run_attempt }}'
+          git status
       - name: Check out lorawan stack
         uses: actions/checkout@v3
         with:
@@ -154,11 +157,11 @@ jobs:
           TAG: "${{ github.event.inputs.tag }}"
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         run: |
-          git status
           git commit -m "all: Release \`${TAG}\` documentation"
+          git status
           gh pr create \
               --assignee '${{ github.actor }}' \
               --base 'master' \
               --body "This pull request merges back changes from the ${TAG} release." \
               --title "Release ${TAG}" \
-              --head "$(git branch --show-current)"
+              --head '${{ github.run_id }}-${{ github.run_attempt }}'
