@@ -159,9 +159,9 @@ jobs:
         run: |
           git commit -m "all: Release \`${TAG}\` documentation"
           git status
+          git push
           gh pr create \
               --assignee '${{ github.actor }}' \
               --base 'master' \
               --body "This pull request merges back changes from the ${TAG} release." \
               --title "Release ${TAG}" \
-              --head '${{ github.run_id }}-${{ github.run_attempt }}'
