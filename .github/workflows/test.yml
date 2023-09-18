@@ -84,8 +84,16 @@ jobs:
         working-directory: "./lorawan-stack-docs"
         run: |
           CHANGES_FILE='./doc/content/the-things-stack/host/aws/ecs/changelog/index.md'
+          TMP_FILE="$(mktemp)"
 
-          cp '../lorawan-stack-aws/UPGRADING.md' "${CHANGES_FILE}"
+
+          # Extract hugo data
+          sed '/^# /q' "${CHANGES_FILE}" \
+          | head -n -1 \
+          > ${TMP_FILE}
+
+          cat "${TMP_FILE}" '../lorawan-stack-aws/UPGRADING.md' \
+          > "${CHANGES_FILE}"
 
           git diff --exit-code "${CHANGES_FILE}" && exit 0 || true # Exit if not changed
 
