@@ -28,7 +28,7 @@ ttn-lw-cli end-devices downlink clear [application-id] [device-id] [flags]
       --application-server-enabled                      Application Server enabled (default true)
       --application-server-grpc-address string          Application Server address (default "localhost:8884")
       --ca string                                       CA certificate file
-  -c, --config strings                                  Location of the config files (default [.ttn-lw-cli.yml,$HOME/.ttn-lw-cli.yml,$HOME/.config/.ttn-lw-cli.yml])
+  -c, --config strings                                  Location of the config files (default [.ttn-lw-cli.yml,$HOME/.ttn-lw-cli.yml,/home/runner/.config/.ttn-lw-cli.yml])
       --credentials-id string                           Credentials ID (if using multiple configurations)
       --device-claiming-server-grpc-address string      Device Claiming Server address (default "localhost:8884")
       --device-template-converter-grpc-address string   Device Template Converter address (default "localhost:8884")
