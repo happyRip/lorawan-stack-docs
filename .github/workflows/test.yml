@@ -108,7 +108,7 @@ jobs:
           CONFIG_FILE='./doc/config/_default/config.toml'
           TAG="${TAG//v/}" # Remove 'v' from tag
 
-          sed -r "s/version = \"([0-9]+\.){2}[0-9]+\"/version = \"${TAG}\"/" "${CONFIG_FILE}"
+          sed -i -r "s/version = \"([0-9]+\.){2}[0-9]+\"/version = \"${TAG}\"/" "${CONFIG_FILE}"
 
           git add "${CONFIG_FILE}"
       - name: Set up go
